@@ -33,6 +33,8 @@ dxmtpe() {
 
 # --- poprawki do drzewa źródeł, których nie ma w repo (2026-10-22, msuliborski) ---
 prep() {
+  # Xcode 26 na runnerach GitHuba: rusage_info_v6 bez pola z SDK iOS 27 (tylko log diagnostyczny) -> 0
+  sed -i "" "s/XP_MS( ru.ri_page_wait_time_mach - pru.ri_page_wait_time_mach )/0.0/" build/ntdll-unix/server_ios.c
   export PATH="/opt/homebrew/opt/bison/bin:/opt/homebrew/opt/flex/bin:$ROOT/toolchains/llvm-mingw-20260421-ucrt-macos-universal/bin:$PATH"
   [ -d research/freetype ] || git clone -q --depth 1 --branch VER-2-13-3 https://github.com/freetype/freetype.git research/freetype
   sed -i '' "s|'@GLOBAL_SOURCE_ROOT@' / 'toolchains/|'$ROOT/toolchains/|" dxmt/build-arm64ec-win.txt
