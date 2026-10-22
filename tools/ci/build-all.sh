@@ -19,10 +19,11 @@ llvm() {
   cmake -G Ninja -S llvm-project/llvm -B llvm-ios-build -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_BUILD_TYPE=Release -DLLVM_HOST_TRIPLE=arm64-apple-ios17.0 -DLLVM_DEFAULT_TARGET_TRIPLE=arm64-apple-ios17.0 -DLLVM_TARGET_ARCH=host -DLLVM_TARGETS_TO_BUILD= -DLLVM_ENABLE_PROJECTS= -DLLVM_BUILD_TOOLS=Off -DLLVM_INCLUDE_TESTS=Off -DLLVM_ENABLE_ZLIB=Off -DCMAKE_MACOSX_BUNDLE=OFF -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_TABLEGEN=$PWD/llvm-host-build/bin/llvm-tblgen -DLLVM_NATIVE_TOOL_DIR=$PWD/llvm-host-build/bin && ninja -C llvm-ios-build $(ninja -C llvm-ios-build -t targets all | grep -oE "^lib/lib[A-Za-z0-9_]+\.a" | sort -u)
 }
 vcrt() {
-  [ -n "$(ls app/Madeira/x86_64-vcruntime/*.dll 2>/dev/null)" ] && return 0
-  mkdir -p /tmp/vcr app/Madeira/x86_64-vcruntime && cd /tmp/vcr && curl -sSL -o vc_redist.x64.exe https://aka.ms/vs/17/release/vc_redist.x64.exe && 7zz x -y vc_redist.x64.exe >/dev/null && for c in $(ls -S a* 2>/dev/null); do cabextract -q "$c" 2>/dev/null; done; 7zz x -y "*.cab" >/dev/null 2>&1; cd - >/dev/null
-  find /tmp/vcr -iname "*.dll" | grep -iE "concrt140|msvcp140|vcamp140|vccorlib140|vcruntime140" | while read f; do cp "$f" app/Madeira/x86_64-vcruntime/; done
-  ls app/Madeira/x86_64-vcruntime/*.dll
+  D=app/Madeira/x86_64-vcruntime; [ -n "$(ls $D/*.dll 2>/dev/null)" ] && return 0
+  rm -rf /tmp/vcr && mkdir -p /tmp/vcr/c /tmp/vcr/c2 $D && cd /tmp/vcr && curl -sSL -o vc_redist.x64.exe https://aka.ms/vs/17/release/vc_redist.x64.exe || return 1
+  cabextract -q -d c vc_redist.x64.exe 2>/dev/null; for f in c/*; do file -b "$f" | grep -qi cabinet && cabextract -q -d c2 "$f" 2>/dev/null; done; cd - >/dev/null
+  for f in /tmp/vcr/c2/*_amd64; do b=$(basename "$f" _amd64); case "$b" in concrt140*|msvcp140*|vcamp140*|vccorlib140*|vcruntime140*) cp "$f" "$D/$b";; esac; done
+  ls $D/vcruntime140.dll
 }
 dxmtpe() {
   export PATH="$PWD/toolchains/llvm-mingw-20260421-ucrt-macos-universal/bin:$PATH"
