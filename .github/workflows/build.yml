@@ -1,0 +1,49 @@
+name: Build Madeira (unsigned IPA)
+
+# Builds the app from this fork's main with tools/ci/build-all.sh and uploads an
+# unsigned IPA. Signing and installing happen on the owner's Mac (free Apple ID).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *"   # daily; syncs with upstream first
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge latest upstream main (our CI fixes stay on top)
+        run: |
+          git config user.name ci && git config user.email ci@localhost
+          git remote add upstream https://github.com/willfaust/Madeira.git
+          git fetch -q upstream main && git merge --no-edit upstream/main
+          git submodule update --init --recursive --depth 1
+      - name: Tools
+        run: |
+          brew install -q cmake ninja meson rustup sevenzip cabextract pkgconf bison flex
+          rustup-init -y -q --target aarch64-apple-ios
+          xcodebuild -downloadComponent MetalToolchain
+      - name: Cache toolchains (LLVM for iOS takes the longest)
+        uses: actions/cache@v4
+        with:
+          path: toolchains
+          key: toolchains-llvm-8dfdcc7b7-mingw-20260421
+      - name: Build
+        run: bash tools/ci/build-all.sh
+      - name: Package IPA
+        run: |
+          mkdir -p ipa/Payload && cp -R ../dd/Build/Products/Debug-iphoneos/Madeira.app ipa/Payload/
+          (cd ipa && zip -qry ../Madeira-main-unsigned.ipa Payload)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Madeira-main-unsigned
+          path: Madeira-main-unsigned.ipa
+          retention-days: 14
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: ../logs
