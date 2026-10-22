@@ -38,7 +38,7 @@ prep() {
   export PATH="/opt/homebrew/opt/bison/bin:/opt/homebrew/opt/flex/bin:$ROOT/toolchains/llvm-mingw-20260421-ucrt-macos-universal/bin:$PATH"
   [ -d research/freetype ] || git clone -q --depth 1 --branch VER-2-13-3 https://github.com/freetype/freetype.git research/freetype
   sed -i '' "s|'@GLOBAL_SOURCE_ROOT@' / 'toolchains/|'$ROOT/toolchains/|" dxmt/build-arm64ec-win.txt
-  sed -i '' 's|__METAL_MEMORY_SCOPE_THREADGROUP__);|__METAL_MEMORY_SCOPE_THREADGROUP__, false);|' dxmt/src/airconv/shaders/air_tessellation.metal
+  [ "$(xcodebuild -version | awk 'NR==1{print int($2)}')" -ge 27 ] && sed -i '' 's|__METAL_MEMORY_SCOPE_THREADGROUP__);|__METAL_MEMORY_SCOPE_THREADGROUP__, false);|' dxmt/src/airconv/shaders/air_tessellation.metal
   (cd dxmt/src/airconv && for s in air_msad air_samplepos air_tessellation; do xcrun -sdk macosx metal -std=metal3.1 --target=air64-apple-macos14.0 -o /tmp/$s.air -c shaders/$s.metal && (cd /tmp && xxd -n $s -i $s.air) > $s.h || return 1; done)
   if [ ! -f wine/build-macos/include/config.h ]; then mkdir -p wine/build-macos && (cd wine/build-macos && ../configure --enable-archs=arm64ec,aarch64 --without-x --without-vulkan --without-freetype --without-gnutls --disable-tests --enable-winegstreamer) || return 1; fi
   sed -i '' 's|^/\* #undef HAVE_GNUTLS_CIPHER_INIT \*/|#define HAVE_GNUTLS_CIPHER_INIT 1|; s|^/\* #undef SONAME_LIBGNUTLS \*/|#define SONAME_LIBGNUTLS "libgnutls.30.dylib"|' wine/build-macos/include/config.h
